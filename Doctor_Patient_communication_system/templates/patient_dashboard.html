@@ -1,0 +1,274 @@
+<!-- templates/patient_dashboard.html -->
+{% extends "base.html" %}
+
+{% block title %}Patient Dashboard{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-8">
+        <div class="card mb-4">
+            <div class="card-header">
+                <h3>Welcome, {{ current_user.username }}</h3>
+            </div>
+            <div class="card-body">
+                <div class="d-flex justify-content-between mb-4">
+                    <div class="card-stats">
+                        <h5>Your Medical Records</h5>
+                        <h2>{{ current_user.medical_records|length }}</h2>
+                        <a href="{{ url_for('medical_history') }}" class="btn btn-sm btn-outline-primary">View Records</a>
+                    </div>
+                    <div class="card-stats">
+                        <h5>Discussion Posts</h5>
+                        <h2>{{ current_user.discussions|length }}</h2>
+                        <a href="{{ url_for('discussions') }}" class="btn btn-sm btn-outline-primary">View Discussions</a>
+                    </div>
+                </div>
+
+                <h4>Quick Tools</h4>
+                <div class="row mt-3">
+                    <div class="col-md-6">
+                        <div class="card">
+                            <div class="card-body">
+                                <h5 class="card-title">Medical Report Summarizer</h5>
+                                <p class="card-text">Upload or paste your medical report for an AI-powered summary.</p>
+                                <a href="#" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#summarizerModal">Use Tool</a>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="card">
+                            <div class="card-body">
+                                <h5 class="card-title">Language Translator</h5>
+                                <p class="card-text">Translate medical information to your preferred language.</p>
+                                <a href="#" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#translatorModal">Use Tool</a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-header">
+                <h4>Medical AI Assistant</h4>
+            </div>
+            <div class="card-body">
+                <div id="chat-messages" class="chat-container mb-3">
+                    <div class="system-message">
+                        Hello! I'm your medical AI assistant. How can I help you today?
+                    </div>
+                </div>
+                <div class="input-group">
+                    <input type="text" id="chat-input" class="form-control" placeholder="Ask a medical question...">
+                    <button class="btn btn-primary" id="send-btn">Send</button>
+                </div>
+                <div class="mt-2">
+                    <button class="btn btn-sm btn-outline-secondary" id="text-to-speech-btn">
+                        <i class="bi bi-volume-up"></i> Text to Speech
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Summarizer Modal -->
+<div class="modal fade" id="summarizerModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Medical Report Summarizer</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="summarizer-form">
+                    <div class="mb-3">
+                        <label for="report-text" class="form-label">Enter your medical report text:</label>
+                        <textarea class="form-control" id="report-text" rows="10" required></textarea>
+                    </div>
+                    <button type="submit" class="btn btn-primary">Generate Summary</button>
+                </form>
+                <div class="mt-4" id="summary-result" style="display: none;">
+                    <h5>Summary</h5>
+                    <div class="card">
+                        <div class="card-body" id="summary-text"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Translator Modal -->
+<div class="modal fade" id="translatorModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Language Translator</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="translator-form">
+                    <div class="mb-3">
+                        <label for="text-to-translate" class="form-label">Text to translate:</label>
+                        <textarea class="form-control" id="text-to-translate" rows="5" required></textarea>
+                    </div>
+                    <div class="mb-3">
+                        <label for="target-language" class="form-label">Target Language:</label>
+                        <select class="form-select" id="target-language">
+                            <option value="fr">French</option>
+                            <option value="es">Spanish</option>
+                            <option value="de">German</option>
+                            <option value="zh">Chinese</option>
+                            <option value="hi">Hindi</option>
+                        </select>
+                    </div>
+                    <button type="submit" class="btn btn-primary">Translate</button>
+                </form>
+                <div class="mt-4" id="translation-result" style="display: none;">
+                    <h5>Translation</h5>
+                    <div class="card">
+                        <div class="card-body" id="translated-text"></div>
+                    </div>
+                    <button class="btn btn-sm btn-outline-secondary mt-2" id="translate-tts-btn">
+                        <i class="bi bi-volume-up"></i> Play Translation
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    $(document).ready(function() {
+        // AI Chat functionality
+        $('#send-btn').click(function() {
+            const message = $('#chat-input').val().trim();
+            if (message) {
+                // Add user message to chat
+                $('#chat-messages').append(`
+                    <div class="user-message">
+                        ${message}
+                    </div>
+                `);
+
+                // Clear input
+                $('#chat-input').val('');
+
+                // Scroll to bottom
+                $('#chat-messages').scrollTop($('#chat-messages')[0].scrollHeight);
+
+                // Send message to server
+                $.ajax({
+                    url: '{{ url_for("chat") }}',
+                    method: 'POST',
+                    data: {
+                        query: message
+                    },
+                    success: function(response) {
+                        // Add AI response to chat
+                        $('#chat-messages').append(`
+                            <div class="system-message">
+                                ${response.response}
+                            </div>
+                        `);
+
+                        // Scroll to bottom
+                        $('#chat-messages').scrollTop($('#chat-messages')[0].scrollHeight);
+                    }
+                });
+            }
+        });
+
+        $('#chat-input').keypress(function(e) {
+            if (e.which === 13) {
+                $('#send-btn').click();
+                return false;
+            }
+        });
+
+        // Medical Report Summarizer
+        $('#summarizer-form').submit(function(e) {
+            e.preventDefault();
+
+            const reportText = $('#report-text').val();
+
+            $.ajax({
+                url: '{{ url_for("summarize") }}',
+                method: 'POST',
+                data: {
+                    report_text: reportText
+                },
+                success: function(response) {
+                    $('#summary-text').text(response.summary);
+                    $('#summary-result').show();
+                }
+            });
+        });
+
+        // Language Translator
+        $('#translator-form').submit(function(e) {
+            e.preventDefault();
+
+            const text = $('#text-to-translate').val();
+            const targetLang = $('#target-language').val();
+
+            $.ajax({
+                url: '{{ url_for("translate") }}',
+                method: 'POST',
+                data: {
+                    text: text,
+                    target_lang: targetLang
+                },
+                success: function(response) {
+                    $('#translated-text').text(response.translated_text);
+                    $('#translation-result').show();
+                }
+            });
+        });
+
+        // Text-to-Speech for translation
+        $('#translate-tts-btn').click(function() {
+            const text = $('#translated-text').text();
+            const lang = $('#target-language').val();
+
+            $.ajax({
+                url: '{{ url_for("text_to_speech") }}',
+                method: 'POST',
+                data: {
+                    text: text,
+                    language: lang
+                },
+                success: function(response) {
+                    const audio = new Audio(response.audio_url);
+                    audio.play();
+                }
+            });
+        });
+
+        // Text-to-Speech for chat
+        $('#text-to-speech-btn').click(function() {
+            const lastMessage = $('.system-message').last().text().trim();
+
+            if (lastMessage) {
+                $.ajax({
+                    url: '{{ url_for("text_to_speech") }}',
+                    method: 'POST',
+                    data: {
+                        text: lastMessage,
+                        language: 'en'
+                    },
+                    success: function(response) {
+                        const audio = new Audio(response.audio_url);
+                        audio.play();
+                    }
+                });
+            }
+        });
+    });
+</script>
+{% endblock %}

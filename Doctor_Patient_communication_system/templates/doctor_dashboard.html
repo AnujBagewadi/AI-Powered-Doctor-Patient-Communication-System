@@ -1,0 +1,413 @@
+<!-- templates/doctor_dashboard.html -->
+{% extends "base.html" %}
+
+{% block title %}Doctor Dashboard{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-8">
+        <div class="card mb-4">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h3>Welcome, Dr. {{ current_user.username }}</h3>
+                <a href="{{ url_for('add_record') }}" class="btn btn-primary">Add New Medical Record</a>
+            </div>
+            <div class="card-body">
+                <h4>Patient Overview</h4>
+                <div class="table-responsive">
+                    <table class="table table-striped">
+                        <thead>
+                            <tr>
+                                <th>Patient Name</th>
+                                <th>Last Visit</th>
+                                <th>Records</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="patient-list">
+                            <!-- Patient list will be loaded via AJAX -->
+                            <tr>
+                                <td colspan="4" class="text-center">Loading patients...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <h4 class="mt-4">Recent Medical Records</h4>
+                <div class="list-group" id="recent-records">
+                    <!-- Recent records will be loaded via AJAX -->
+                    <div class="text-center py-3">Loading recent records...</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                <h4>Research Discussions</h4>
+            </div>
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h5>Latest Posts</h5>
+                    <a href="{{ url_for('new_discussion') }}" class="btn btn-sm btn-primary">Create New Post</a>
+                </div>
+                <div class="list-group" id="recent-discussions">
+                    <!-- Recent discussions will be loaded via AJAX -->
+                    <div class="text-center py-3">Loading discussions...</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-4">
+        <div class="card mb-4">
+            <div class="card-header">
+                <h4>Tools</h4>
+            </div>
+            <div class="card-body">
+                <div class="list-group">
+                    <a href="#" class="list-group-item list-group-item-action" data-bs-toggle="modal" data-bs-target="#summarizerModal">
+                        <div class="d-flex w-100 justify-content-between">
+                            <h5 class="mb-1">Medical Report Summarizer</h5>
+                        </div>
+                        <p class="mb-1">Generate concise summaries from medical reports.</p>
+                    </a>
+                    <a href="#" class="list-group-item list-group-item-action" data-bs-toggle="modal" data-bs-target="#translatorModal">
+                        <div class="d-flex w-100 justify-content-between">
+                            <h5 class="mb-1">Language Translator</h5>
+                        </div>
+                        <p class="mb-1">Translate medical information for international patients.</p>
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                <h4>Medical AI Assistant</h4>
+            </div>
+            <div class="card-body">
+                <div id="chat-messages" class="chat-container mb-3">
+                    <div class="system-message">
+                        Hello Dr. {{ current_user.username }}! I'm your medical AI assistant. How can I help you today?
+                    </div>
+                </div>
+                <div class="input-group">
+                    <input type="text" id="chat-input" class="form-control" placeholder="Ask a medical question...">
+                    <button class="btn btn-primary" id="send-btn">Send</button>
+                </div>
+                <div class="mt-2">
+                    <button class="btn btn-sm btn-outline-secondary" id="text-to-speech-btn">
+                        <i class="bi bi-volume-up"></i> Text to Speech
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Summarizer Modal -->
+<div class="modal fade" id="summarizerModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                 <h5 class="modal-title">Medical Report Summarizer</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="summarizer-form">
+                    <div class="mb-3">
+                        <label for="report-text" class="form-label">Enter medical report text:</label>
+                        <textarea class="form-control" id="report-text" rows="10" required></textarea>
+                    </div>
+                    <button type="submit" class="btn btn-primary">Generate Summary</button>
+                </form>
+                <div class="mt-4" id="summary-result" style="display: none;">
+                    <h5>Summary</h5>
+                    <div class="card">
+                        <div class="card-body" id="summary-text"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Translator Modal -->
+<div class="modal fade" id="translatorModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Language Translator</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="translator-form">
+                    <div class="mb-3">
+                        <label for="text-to-translate" class="form-label">Text to translate:</label>
+                        <textarea class="form-control" id="text-to-translate" rows="5" required></textarea>
+                    </div>
+                    <div class="mb-3">
+                        <label for="target-language" class="form-label">Target Language:</label>
+                        <select class="form-select" id="target-language">
+                            <option value="fr">French</option>
+                            <option value="es">Spanish</option>
+                            <option value="de">German</option>
+                            <option value="zh">Chinese</option>
+                            <option value="hi">Hindi</option>
+                        </select>
+                    </div>
+                    <button type="submit" class="btn btn-primary">Translate</button>
+                </form>
+                <div class="mt-4" id="translation-result" style="display: none;">
+                    <h5>Translation</h5>
+                    <div class="card">
+                        <div class="card-body" id="translated-text"></div>
+                    </div>
+                    <button class="btn btn-sm btn-outline-secondary mt-2" id="translate-tts-btn">
+                        <i class="bi bi-volume-up"></i> Play Translation
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    $(document).ready(function() {
+        // Load patients
+        function loadPatients() {
+            $.ajax({
+                url: '/api/patients',
+                method: 'GET',
+                success: function(response) {
+                    $('#patient-list').empty();
+                    
+                    if (response.patients.length === 0) {
+                        $('#patient-list').html('<tr><td colspan="4" class="text-center">No patients found</td></tr>');
+                        return;
+                    }
+                    
+                    response.patients.forEach(function(patient) {
+                        const lastVisit = patient.last_visit ? new Date(patient.last_visit).toLocaleDateString() : 'Never';
+                        
+                        $('#patient-list').append(`
+                            <tr>
+                                <td>${patient.username}</td>
+                                <td>${lastVisit}</td>
+                                <td>${patient.record_count}</td>
+                                <td>
+                                    <a href="/patient/${patient.id}" class="btn btn-sm btn-primary">View Profile</a>
+                                </td>
+                            </tr>
+                        `);
+                    });
+                },
+                error: function() {
+                    $('#patient-list').html('<tr><td colspan="4" class="text-center">Error loading patients</td></tr>');
+                }
+            });
+        }
+        
+        // Load recent records
+        function loadRecentRecords() {
+            $.ajax({
+                url: '/api/recent_records',
+                method: 'GET',
+                success: function(response) {
+                    $('#recent-records').empty();
+                    
+                    if (response.records.length === 0) {
+                        $('#recent-records').html('<div class="text-center py-3">No recent records</div>');
+                        return;
+                    }
+                    
+                    response.records.forEach(function(record) {
+                        const date = new Date(record.record_date).toLocaleDateString();
+                        
+                        $('#recent-records').append(`
+                            <div class="list-group-item">
+                                <div class="d-flex w-100 justify-content-between">
+                                    <h5 class="mb-1">${record.patient_name}</h5>
+                                    <small>${date}</small>
+                                </div>
+                                <p class="mb-1"><strong>Diagnosis:</strong> ${record.diagnosis}</p>
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <small><strong>ID:</strong> #${record.id}</small>
+                                    <a href="/medical_record/${record.id}" class="btn btn-sm btn-outline-primary">View Details</a>
+                                </div>
+                            </div>
+                        `);
+                    });
+                },
+                error: function() {
+                    $('#recent-records').html('<div class="text-center py-3">Error loading records</div>');
+                }
+            });
+        }
+        
+        // Load recent discussions
+        function loadRecentDiscussions() {
+            $.ajax({
+                url: '/api/recent_discussions',
+                method: 'GET',
+                success: function(response) {
+                    $('#recent-discussions').empty();
+                    
+                    if (response.discussions.length === 0) {
+                        $('#recent-discussions').html('<div class="text-center py-3">No recent discussions</div>');
+                        return;
+                    }
+                    
+                    response.discussions.forEach(function(discussion) {
+                        const date = new Date(discussion.date_posted).toLocaleDateString();
+                        
+                        $('#recent-discussions').append(`
+                            <a href="/discussion/${discussion.id}" class="list-group-item list-group-item-action">
+                                <div class="d-flex w-100 justify-content-between">
+                                    <h5 class="mb-1">${discussion.title}</h5>
+                                    <small>${date}</small>
+                                </div>
+                                <p class="mb-1">${discussion.content.substring(0, 100)}${discussion.content.length > 100 ? '...' : ''}</p>
+                                <small>By ${discussion.author_name} | ${discussion.comment_count} comments</small>
+                            </a>
+                        `);
+                    });
+                },
+                error: function() {
+                    $('#recent-discussions').html('<div class="text-center py-3">Error loading discussions</div>');
+                }
+            });
+        }
+        
+        // AI Chat functionality
+        $('#send-btn').click(function() {
+            const message = $('#chat-input').val().trim();
+            if (message) {
+                // Add user message to chat
+                $('#chat-messages').append(`
+                    <div class="user-message">
+                        ${message}
+                    </div>
+                `);
+                
+                // Clear input
+                $('#chat-input').val('');
+                
+                // Scroll to bottom
+                $('#chat-messages').scrollTop($('#chat-messages')[0].scrollHeight);
+                
+                // Send message to server
+                $.ajax({
+                    url: '{{ url_for("chat") }}',
+                    method: 'POST',
+                    data: {
+                        query: message
+                    },
+                    success: function(response) {
+                        // Add AI response to chat
+                        $('#chat-messages').append(`
+                            <div class="system-message">
+                                ${response.response}
+                            </div>
+                        `);
+                        
+                        // Scroll to bottom
+                        $('#chat-messages').scrollTop($('#chat-messages')[0].scrollHeight);
+                    }
+                });
+            }
+        });
+        
+        $('#chat-input').keypress(function(e) {
+            if (e.which === 13) {
+                $('#send-btn').click();
+                return false;
+            }
+        });
+        
+        // Medical Report Summarizer
+        $('#summarizer-form').submit(function(e) {
+            e.preventDefault();
+            
+            const reportText = $('#report-text').val();
+            
+            $.ajax({
+                url: '{{ url_for("summarize") }}',
+                method: 'POST',
+                data: {
+                    report_text: reportText
+                },
+                success: function(response) {
+                    $('#summary-text').text(response.summary);
+                    $('#summary-result').show();
+                }
+            });
+        });
+        
+        // Language Translator
+        $('#translator-form').submit(function(e) {
+            e.preventDefault();
+            
+            const text = $('#text-to-translate').val();
+            const targetLang = $('#target-language').val();
+            
+            $.ajax({
+                url: '{{ url_for("translate") }}',
+                method: 'POST',
+                data: {
+                    text: text,
+                    target_lang: targetLang
+                },
+                success: function(response) {
+                    $('#translated-text').text(response.translated_text);
+                    $('#translation-result').show();
+                }
+            });
+        });
+        
+        // Text-to-Speech
+        $('#text-to-speech-btn').click(function() {
+            const lastMessage = $('.system-message').last().text().trim();
+            
+            if (lastMessage) {
+                $.ajax({
+                    url: '{{ url_for("text_to_speech") }}',
+                    method: 'POST',
+                    data: {
+                        text: lastMessage,
+                        language: 'en'
+                    },
+                    success: function(response) {
+                        const audio = new Audio(response.audio_url);
+                        audio.play();
+                    }
+                });
+            }
+        });
+        
+        $('#translate-tts-btn').click(function() {
+            const text = $('#translated-text').text();
+            const lang = $('#target-language').val();
+            
+            $.ajax({
+                url: '{{ url_for("text_to_speech") }}',
+                method: 'POST',
+                data: {
+                    text: text,
+                    language: lang
+                },
+                success: function(response) {
+                    const audio = new Audio(response.audio_url);
+                    audio.play();
+                }
+            });
+        });
+        
+        // Load initial data
+        loadPatients();
+        loadRecentRecords();
+        loadRecentDiscussions();
+    });
+</script>
+{% endblock %}

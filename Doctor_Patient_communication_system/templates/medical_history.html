@@ -1,0 +1,246 @@
+<!-- templates/medical_history.html -->
+{% extends "base.html" %}
+
+{% block title %}Medical History{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <h3>Medical History</h3>
+        {% if current_user.is_doctor %}
+        <a href="{{ url_for('add_record') }}" class="btn btn-primary">Add New Record</a>
+        {% endif %}
+    </div>
+    <div class="card-body">
+        {% if current_user.is_doctor %}
+        <div class="mb-4">
+            <label for="patient-filter" class="form-label">Filter by Patient:</label>
+            <select class="form-select" id="patient-filter">
+                <option value="all">All Patients</option>
+                {% for patient in patients %}
+                <option value="{{ patient.id }}">{{ patient.username }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        {% endif %}
+
+        <div class="table-responsive">
+            <table class="table table-striped" id="records-table">
+                <thead>
+                    <tr>
+                        <th>Date</th>
+                        {% if current_user.is_doctor %}
+                        <th>Patient</th>
+                        {% endif %}
+                        <th>Diagnosis</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for record in records %}
+                    <tr data-patient-id="{{ record.user_id }}">
+                        <td>{{ record.record_date.strftime('%Y-%m-%d') }}</td>
+                        {% if current_user.is_doctor %}
+                        <td>{{ record.patient.username }}</td>
+                        {% endif %}
+                        <td>{{ record.diagnosis }}</td>
+                        <td>
+                            <button class="btn btn-sm btn-primary view-record" data-record-id="{{ record.id }}">View Details</button>
+                            {% if record.summary %}
+                            <button class="btn btn-sm btn-outline-info view-summary" data-record-id="{{ record.id }}">View Summary</button>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="{% if current_user.is_doctor %}4{% else %}3{% endif %}" class="text-center">No medical records found.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Record Details Modal -->
+<div class="modal fade" id="recordModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Medical Record Details</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <div>
+                        <h5 id="record-patient-name"></h5>
+                        <p class="text-muted" id="record-date"></p>
+                    </div>
+                    <div>
+                        <button class="btn btn-sm btn-outline-secondary" id="tts-record">
+                            <i class="bi bi-volume-up"></i> Text to Speech
+                        </button>
+                        {% if current_user.is_doctor %}
+                        <button class="btn btn-sm btn-primary" id="edit-record">Edit Record</button>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <div class="card mb-3">
+                    <div class="card-header">
+                        <h5>Diagnosis</h5>
+                    </div>
+                    <div class="card-body" id="record-diagnosis"></div>
+                </div>
+
+                <div class="card mb-3">
+                    <div class="card-header">
+                        <h5>Prescription</h5>
+                    </div>
+                    <div class="card-body" id="record-prescription"></div>
+                </div>
+
+                <div class="card">
+                    <div class="card-header">
+                        <h5>Notes</h5>
+                    </div>
+                    <div class="card-body" id="record-notes"></div>
+                </div>
+
+                <div class="card mt-3" id="record-summary-card">
+                    <div class="card-header">
+                        <h5>Summary</h5>
+                    </div>
+                    <div class="card-body" id="record-summary"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Summary Modal -->
+<div class="modal fade" id="summaryModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Medical Report Summary</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div id="summary-content"></div>
+                <div class="mt-3">
+                    <button class="btn btn-sm btn-outline-secondary" id="tts-summary">
+                        <i class="bi bi-volume-up"></i> Text to Speech
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    $(document).ready(function() {
+        // Filter by patient
+        $('#patient-filter').change(function() {
+            const patientId = $(this).val();
+
+            if (patientId === 'all') {
+                $('#records-table tbody tr').show();
+            } else {
+                $('#records-table tbody tr').hide();
+                $(`#records-table tbody tr[data-patient-id="${patientId}"]`).show();
+            }
+        });
+
+        // View record details
+        $('.view-record').click(function() {
+            const recordId = $(this).data('record-id');
+
+            $.ajax({
+                url: `/api/medical_record/${recordId}`,
+                method: 'GET',
+                success: function(response) {
+                    const record = response.record;
+
+                    $('#record-patient-name').text(record.patient_name);
+                    $('#record-date').text(new Date(record.record_date).toLocaleDateString());
+                    $('#record-diagnosis').text(record.diagnosis);
+                    $('#record-prescription').text(record.prescription || 'No prescription provided');
+                    $('#record-notes').text(record.notes || 'No additional notes');
+
+                    if (record.summary) {
+                        $('#record-summary').text(record.summary);
+                        $('#record-summary-card').show();
+                    } else {
+                        $('#record-summary-card').hide();
+                    }
+
+                    $('#edit-record').data('record-id', record.id);
+
+                    $('#recordModal').modal('show');
+                }
+            });
+        });
+
+        // View summary
+        $('.view-summary').click(function() {
+            const recordId = $(this).data('record-id');
+
+            $.ajax({
+                url: `/api/medical_record/${recordId}`,
+                method: 'GET',
+                success: function(response) {
+                    $('#summary-content').text(response.record.summary);
+                    $('#summaryModal').modal('show');
+                }
+            });
+        });
+
+        // Text-to-Speech for record
+        $('#tts-record').click(function() {
+            const text = $('#record-diagnosis').text() + '. ' +
+                         $('#record-prescription').text() + '. ' +
+                         $('#record-notes').text();
+
+            $.ajax({
+                url: '{{ url_for("text_to_speech") }}',
+                method: 'POST',
+                data: {
+                    text: text,
+                    language: 'en'
+                },
+                success: function(response) {
+                    const audio = new Audio(response.audio_url);
+                    audio.play();
+                }
+            });
+        });
+
+        // Text-to-Speech for summary
+        $('#tts-summary').click(function() {
+            const text = $('#summary-content').text();
+
+            $.ajax({
+                url: '{{ url_for("text_to_speech") }}',
+                method: 'POST',
+                data: {
+                    text: text,
+                    language: 'en'
+                },
+                success: function(response) {
+                    const audio = new Audio(response.audio_url);
+                    audio.play();
+                }
+            });
+        });
+
+        // Edit record
+        $('#edit-record').click(function() {
+            const recordId = $(this).data('record-id');
+            window.location.href = `/edit_record/${recordId}`;
+        });
+    });
+</script>
+{% endblock %}

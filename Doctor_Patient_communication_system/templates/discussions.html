@@ -1,0 +1,143 @@
+<!-- templates/discussions.html -->
+{% extends "base.html" %}
+
+{% block title %}Medical Discussions{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h3>Medical Discussions</h3>
+                <a href="{{ url_for('new_discussion') }}" class="btn btn-primary">Post New Discussion</a>
+            </div>
+            <div class="card-body">
+                <div class="mb-3">
+                    <input type="text" id="search-discussions" class="form-control" placeholder="Search discussions...">
+                </div>
+
+                <div class="list-group" id="discussions-list">
+                    {% for discussion in discussions %}
+                    <a href="{{ url_for('view_discussion', discussion_id=discussion.id) }}" class="list-group-item list-group-item-action">
+                        <div class="d-flex w-100 justify-content-between">
+                            <h5 class="mb-1">{{ discussion.title }}</h5>
+                            <small>{{ discussion.date_posted.strftime('%Y-%m-%d') }}</small>
+                        </div>
+                        <p class="mb-1">{{ discussion.content[:200] }}{% if discussion.content|length > 200 %}...{% endif %}</p>
+                        <div class="d-flex justify-content-between align-items-center">
+                            <small>Posted by {{ discussion.author.username }}</small>
+                            <span class="badge bg-primary rounded-pill">{{ discussion.comments|length }} comments</span>
+                        </div>
+                    </a>
+                    {% else %}
+                    <div class="text-center py-4">
+                        <p>No discussions have been posted yet.</p>
+                        <a href="{{ url_for('new_discussion') }}" class="btn btn-primary">Be the first to post</a>
+                    </div>
+                    {% endfor %}
+                </div>
+
+                <nav aria-label="Discussion pagination" class="mt-4">
+                    <ul class="pagination justify-content-center">
+                        {% if page > 1 %}
+                        <li class="page-item">
+                            <a class="page-link" href="{{ url_for('discussions', page=page-1) }}">Previous</a>
+                        </li>
+                        {% else %}
+                        <li class="page-item disabled">
+                            <a class="page-link" href="#" tabindex="-1" aria-disabled="true">Previous</a>
+                        </li>
+                        {% endif %}
+
+                        {% for p in range(1, total_pages + 1) %}
+                        <li class="page-item {% if p == page %}active{% endif %}">
+                            <a class="page-link" href="{{ url_for('discussions', page=p) }}">{{ p }}</a>
+                        </li>
+                        {% endfor %}
+
+                        {% if page < total_pages %}
+                        <li class="page-item">
+                            <a class="page-link" href="{{ url_for('discussions', page=page+1) }}">Next</a>
+                        </li>
+                        {% else %}
+                        <li class="page-item disabled">
+                            <a class="page-link" href="#" tabindex="-1" aria-disabled="true">Next</a>
+                        </li>
+                        {% endif %}
+                    </ul>
+                </nav>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-4">
+        <div class="card mb-4">
+            <div class="card-header">
+                <h4>Discussion Categories</h4>
+            </div>
+            <div class="card-body">
+                <div class="list-group">
+                    <a href="{{ url_for('discussions', category='all') }}" class="list-group-item list-group-item-action {% if not category %}active{% endif %}">
+                        All Discussions
+                    </a>
+                    <a href="{{ url_for('discussions', category='treatment') }}" class="list-group-item list-group-item-action {% if category == 'treatment' %}active{% endif %}">
+                        Treatment Protocols
+                    </a>
+                    <a href="{{ url_for('discussions', category='research') }}" class="list-group-item list-group-item-action {% if category == 'research' %}active{% endif %}">
+                        Research Findings
+                    </a>
+                    <a href="{{ url_for('discussions', category='case_studies') }}" class="list-group-item list-group-item-action {% if category == 'case_studies' %}active{% endif %}">
+                        Case Studies
+                    </a>
+                    <a href="{{ url_for('discussions', category='questions') }}" class="list-group-item list-group-item-action {% if category == 'questions' %}active{% endif %}">
+                        Questions & Advice
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                <h4>Popular Tags</h4>
+            </div>
+            <div class="card-body">
+                <div class="d-flex flex-wrap gap-2">
+                    <a href="{{ url_for('discussions', tag='cardiology') }}" class="badge bg-primary text-decoration-none">Cardiology</a>
+                    <a href="{{ url_for('discussions', tag='neurology') }}" class="badge bg-secondary text-decoration-none">Neurology</a>
+                    <a href="{{ url_for('discussions', tag='oncology') }}" class="badge bg-success text-decoration-none">Oncology</a>
+                    <a href="{{ url_for('discussions', tag='pediatrics') }}" class="badge bg
+                    <a href="{{ url_for('discussions', tag='pediatrics') }}" class="badge bg-info text-decoration-none">Pediatrics</a>
+                    <a href="{{ url_for('discussions', tag='psychiatry') }}" class="badge bg-warning text-decoration-none">Psychiatry</a>
+                    <a href="{{ url_for('discussions', tag='surgery') }}" class="badge bg-danger text-decoration-none">Surgery</a>
+                    <a href="{{ url_for('discussions', tag='internal_medicine') }}" class="badge bg-dark text-decoration-none">Internal Medicine</a>
+                    <a href="{{ url_for('discussions', tag='emergency') }}" class="badge bg-primary text-decoration-none">Emergency</a>
+                    <a href="{{ url_for('discussions', tag='radiology') }}" class="badge bg-secondary text-decoration-none">Radiology</a>
+                    <a href="{{ url_for('discussions', tag='dermatology') }}" class="badge bg-success text-decoration-none">Dermatology</a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    $(document).ready(function() {
+        // Search functionality
+        $('#search-discussions').on('input', function() {
+            const searchTerm = $(this).val().toLowerCase();
+            
+            $('#discussions-list a').each(function() {
+                const title = $(this).find('h5').text().toLowerCase();
+                const content = $(this).find('p').text().toLowerCase();
+                
+                if (title.includes(searchTerm) || content.includes(searchTerm)) {
+                    $(this).show();
+                } else {
+                    $(this).hide();
+                }
+            });
+        });
+    });
+</script>
+{% endblock %}
